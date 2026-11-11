@@ -1,0 +1,775 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>أطلس الأرض</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap">
+<style>
+/* Layout: atlas-style two-tab shell. Terrain tab = 3D stage + info panel; Rocks tab = card index + specimen sheet. */
+:root{
+  --bg:#EDF1F0;--surface:#F8FAF9;--ink:#14272B;--muted:#586C70;--line:#C9D5D3;
+  --accent:#0E6B73;--accent-ink:#FFFFFF;--soft:#DCEAE8;--mark:#B8741A;
+  --stage1:#E3EDEB;--stage2:#B9CCCA;
+  --good:#1E7A4B;--goodbg:#DDF0E5;--bad:#B2362F;--badbg:#F7E0DD;
+  --fd:'Reem Kufi',system-ui,sans-serif;
+  --fb:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E181A;--surface:#152426;--ink:#E3EEEC;--muted:#8FA6A9;--line:#294043;
+    --accent:#4FC3CB;--accent-ink:#06191B;--soft:#193235;--mark:#E3A650;
+    --stage1:#1C3235;--stage2:#0B1618;
+    --good:#5CC48A;--goodbg:#173A29;--bad:#F08A82;--badbg:#401D1A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E181A;--surface:#152426;--ink:#E3EEEC;--muted:#8FA6A9;--line:#294043;
+  --accent:#4FC3CB;--accent-ink:#06191B;--soft:#193235;--mark:#E3A650;
+  --stage1:#1C3235;--stage2:#0B1618;
+  --good:#5CC48A;--goodbg:#173A29;--bad:#F08A82;--badbg:#401D1A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--ink);font:400 15px/1.75 var(--fb);direction:rtl;
+  padding-block:18px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;font-family:var(--fd);font-weight:600;text-wrap:balance}
+p{margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+
+.top{display:flex;align-items:center;gap:14px;padding-bottom:14px;flex-wrap:wrap}
+.logo{width:54px;height:54px;flex:none;color:var(--accent)}
+.top h1{font-size:34px;line-height:1.2}
+.top .sub{color:var(--muted);font-size:14px}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:10px 18px;
+  font:600 18px var(--fd);color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--ink)}
+
+.t-grid{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;margin-top:16px;align-items:start}
+.stage{position:relative;direction:ltr;height:min(66vh,600px);min-height:380px;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:radial-gradient(120% 95% at 50% 15%,var(--stage1),var(--stage2));touch-action:pan-y;cursor:grab}
+.stage canvas{display:block;width:100%;height:100%}
+.tlabel{position:absolute;left:0;top:0;direction:rtl;background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:999px;padding:2px 12px;font:600 13px/1.6 var(--fb);box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;will-change:transform}
+.tlabel:hover,.tlabel[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hint{position:absolute;inset-inline:0;bottom:10px;direction:rtl;text-align:center;font-size:12.5px;color:var(--muted);pointer-events:none}
+.fail{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted);direction:rtl}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:10px;font-size:14px}
+.ctrl label{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.ctrl input[type=range]{accent-color:var(--accent);width:130px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 14px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn[aria-pressed="true"]{background:var(--soft);border-color:var(--accent)}
+.note{color:var(--muted);font-size:12.5px;margin-inline-start:auto}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.panel h2{font-size:26px;line-height:1.3}
+.panel h3{font-size:16px;margin-top:16px;color:var(--accent)}
+.panel .en{font:500 13px var(--fb);color:var(--muted);direction:ltr;display:inline-block;margin-inline-start:8px;letter-spacing:.04em}
+.panel p{margin-top:4px}
+.feat-list{display:grid;gap:8px;margin-top:12px}
+.feat{display:flex;gap:12px;align-items:center;text-align:start;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.feat:hover{border-color:var(--accent)}
+.feat b{display:block;font:600 17px var(--fd)}
+.feat span.d{font-size:13px;color:var(--muted);line-height:1.5;display:block}
+.swatch{width:26px;height:26px;border-radius:7px;flex:none;border:1px solid rgba(0,0,0,.2)}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:12px 0 0}
+dt{color:var(--muted);font-size:13.5px}
+dd{margin:0;font-weight:500}
+.row-btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.fact{margin-top:14px;background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px}
+
+.steps{list-style:none;counter-reset:s;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0;margin:16px 0 0}
+.steps li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.5;color:var(--muted)}
+.steps li b{display:block;font:600 16px var(--fd);color:var(--ink)}
+.steps li b::before{content:counter(s) "· ";color:var(--accent)}
+.cats{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 16px;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chip[disabled]{opacity:.55;cursor:not-allowed}
+.sub-def{margin-top:10px;color:var(--muted);font-size:14px;max-width:70ch}
+.rk{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;margin-top:14px;align-items:start}
+.rk-list{grid-column:1;grid-row:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.rk-detail{grid-column:2;grid-row:1;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
+.rcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:start;display:block;width:100%;min-width:0}
+.rcard img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px}
+.rcard b{display:block;font:600 16px var(--fd);margin-top:6px}
+.rcard small{color:var(--muted);direction:ltr;display:block;text-align:right;font-size:12px}
+.rcard:hover{border-color:var(--accent)}
+.rcard[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.rk-big{display:block;width:100%;max-height:240px;aspect-ratio:1;object-fit:cover;border-radius:10px;margin-bottom:12px}
+.pill{display:inline-block;background:var(--soft);color:var(--ink);border-radius:999px;padding:0 12px;font-size:13px;font-weight:600;margin-top:6px}
+.meter{position:relative;direction:ltr;height:8px;background:var(--soft);border-radius:4px;margin-top:6px}
+.meter i{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.meter-n{direction:ltr;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+
+.quiz{max-width:760px;margin:18px auto 0}
+.qbar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent)}
+.qmeta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-top:8px}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:12px}
+.qcard h2{font-size:21px;line-height:1.5}
+.qimg{display:block;width:min(100%,260px);aspect-ratio:1;object-fit:cover;border-radius:12px;margin:12px 0}
+.qclue{background:var(--soft);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:16px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.opt{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font:600 16px var(--fd);text-align:start}
+.opt:hover:not([disabled]){border-color:var(--accent)}
+.opt.ok{background:var(--goodbg);border-color:var(--good);color:var(--ink)}
+.opt.no{background:var(--badbg);border-color:var(--bad);color:var(--ink)}
+.opt[disabled]{cursor:default}
+.fb{margin-top:14px;border-radius:10px;padding:12px 14px;font-size:14.5px}
+.fb.ok{background:var(--goodbg)}.fb.no{background:var(--badbg)}
+.fb strong{display:block;font:600 17px var(--fd)}
+.score{font:700 54px/1.1 var(--fd);color:var(--accent)}
+.miss{display:flex;gap:10px;align-items:center;margin-top:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.miss img{width:44px;height:44px;border-radius:6px;object-fit:cover}
+
+.chip.big{font:600 17px var(--fd);padding:6px 20px;flex:1 1 auto;text-align:center}
+.qbtns{display:flex;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+@media (max-width:900px){
+  .t-grid,.rk{grid-template-columns:minmax(0,1fr)}
+  .rk-list{grid-column:1;grid-row:1;display:flex;overflow-x:auto;gap:10px;padding:2px 2px 10px;scroll-snap-type:x proximity}
+  .rcard{flex:0 0 128px;scroll-snap-align:start}
+  .rk-detail{grid-column:1;grid-row:2;position:static;max-height:none;overflow:visible}
+  .stage{height:56vh;min-height:340px}
+}
+@media (max-width:640px){
+  .steps{display:flex;overflow-x:auto;gap:8px;padding-bottom:6px}
+  .steps li{flex:0 0 170px}
+  .tab{font-size:16px;padding:8px 12px}
+  .note,.qbtns{margin-inline-start:0;width:100%}
+  .qbtns .btn{flex:1}
+  .panel{padding:14px}
+}
+@media (max-width:480px){
+  .opts{grid-template-columns:minmax(0,1fr)}
+  .top h1{font-size:28px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+const {useState,useEffect,useRef}=React;
+const html=htm.bind(React.createElement);
+const REDUCED=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ======================= بيانات التضاريس ======================= */
+const FEATURES=[
+ {key:'mountain',name:'الجبل',en:'Mountain',color:'#8A8175',short:'قمم عالية ومنحدرات حادة',
+  def:'جزء من سطح الأرض يرتفع كثيرًا عمّا حوله، وله قمة ضيقة ومنحدرات شديدة.',
+  facts:[['الشكل','قمة ضيقة ومنحدرات شديدة'],['الارتفاع','يعلو مئات الأمتار فوق ما حوله'],['الغطاء','ثلوج على القمم العالية'],['الاستفادة','سياحة ومعادن ومنابع أنهار']],
+  how:'تتكوّن بحركة صفائح الأرض: إمّا بالتواء الطبقات (جبال التواء) أو بانكسارها وانزياح كتل منها (جبال صدعية)، وإمّا بتراكم الحمم البركانية (جبال بركانية).',
+  egypt:'جبل كاترين في جنوب سيناء، وهو أعلى قمة في مصر (نحو 2629 م).',
+  know:'القمم العالية مغطاة بالثلوج لأن الحرارة تنخفض كلما ارتفعنا. لاحظ ذلك في المجسم.'},
+ {key:'valley',name:'الوادي',en:'Valley',color:'#4F8A4A',short:'منخفض طويل بين مرتفعات',
+  def:'منخفض طويل يقع بين جبلين أو تلّين، وكثيرًا ما يجري في قاعه نهر أو سيل.',
+  facts:[['الشكل','حرف V (نهري) أو حرف U (جليدي)'],['الموقع','بين مرتفعات'],['المياه','نهر أو سيل في القاع'],['الاستفادة','زراعة وطرق مواصلات']],
+  how:'ينحته النهر بالتعرية على مدى ملايين السنين فيأخذ شكل V. أما الأنهار الجليدية فتحفر أودية على شكل U، وبعض الأودية ينشأ من هبوط كتلة أرضية بين صدعين.',
+  egypt:'وادي النيل أشهر أودية مصر. وفي الصحراء أودية جافة مثل وادي دجلة في المعادي.',
+  know:'اسم نهر «غوادالكيبير» في إسبانيا أصله العربي «الوادي الكبير».'},
+ {key:'plain',name:'السهل',en:'Plain',color:'#86AE5F',short:'أرض منبسطة منخفضة',
+  def:'أرض مستوية أو قليلة التموج، منخفضة عن المرتفعات المجاورة، وتقل فيها المنحدرات.',
+  facts:[['الشكل','مستوٍ أو قليل التموج'],['الارتفاع','منخفض'],['التربة','طمي خصب في السهول الرسوبية'],['الاستفادة','زراعة ومدن وطرق']],
+  how:'أغلبها سهول رسوبية تكوّنت من طمي الأنهار الذي يترسب عند الفيضان وعند المصب. وبعضها سهول ساحلية ظهرت عند تراجع البحر.',
+  egypt:'دلتا النيل من أخصب سهول العالم، وتكوّنت من طمي النيل.',
+  know:'تقوم أغلب المدن الكبرى والزراعة في السهول لأن أرضها مستوية وتربتها خصبة وسهل الانتقال فيها.'},
+ {key:'plateau',name:'الهضبة',en:'Plateau',color:'#CDA765',short:'مرتفع بقمة مستوية',
+  def:'أرض مرتفعة قمتها مستوية واسعة، وتنتهي بحافة شديدة الانحدار على جانب واحد على الأقل.',
+  facts:[['الشكل','قمة مستوية واسعة'],['الحواف','جروف شديدة الانحدار'],['الارتفاع','أعلى من الأراضي المجاورة'],['الاستفادة','رعي ومحاجر وتعدين وعمران']],
+  how:'ترتفع بحركة القشرة الأرضية، ثم تحفر الأنهار والتعرية أطرافها فتصير جروفًا. وبعض الهضاب تتكوّن من حمم بركانية تراكمت طبقات فوق بعضها.',
+  egypt:'هضبة الجيزة التي بُنيت عليها الأهرامات، وهضبة الجلف الكبير في الصحراء الغربية.',
+  know:'الفرق بين الجبل والهضبة أن قمة الهضبة واسعة ومستوية، أما قمة الجبل فضيقة.'}
+];
+
+/* ======================= توليد التضاريس ======================= */
+const hash2=(x,z)=>{const s=Math.sin(x*127.1+z*311.7)*43758.5453;return s-Math.floor(s)};
+const vnoise=(x,z)=>{const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi,u=xf*xf*(3-2*xf),v=zf*zf*(3-2*zf);
+  const a=hash2(xi,zi),b=hash2(xi+1,zi),c=hash2(xi,zi+1),d=hash2(xi+1,zi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v};
+const fbm=(x,z,o)=>{let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*vnoise(x*f,z*f);f*=2;a*=.5}return s/(1-Math.pow(.5,o))};
+const sstep=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
+const hex3=h=>{const n=parseInt(h.slice(1),16);return[(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]};
+const mix3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const PEAKS=[[-3.7,-3.3,3.0,2.1],[-2.3,-3.9,3.7,2.3],[-0.7,-3.6,2.9,2.0],[-4.0,-1.3,2.3,1.9],[-3.0,-2.1,2.6,1.8]];
+const COL={g1:hex3('#7DA85A'),g2:hex3('#95B96A'),r1:hex3('#7E766B'),r2:hex3('#9A9084'),snow:hex3('#F1F5F7'),
+  val:hex3('#4C8147'),water:hex3('#3F93BA'),top1:hex3('#D2AE70'),top2:hex3('#C39A58'),cliff:hex3('#8E6C42'),mark:hex3('#F2B544')};
+function sample(x,z){
+  let M=0;for(const p of PEAKS){const d=Math.hypot(x-p[0],z-p[1]);const v=p[2]*Math.pow(Math.max(0,1-d/p[3]),1.5);if(v>M)M=v}
+  const n=fbm(x*1.6+3,z*1.6+7,4);
+  M*=0.78+0.5*n;
+  if(M>0.05)M+=(fbm(x*5,z*5,2)-0.5)*0.14*Math.min(1,M);
+  const dx=Math.abs(x-3)-1.55,dz=Math.abs(z+1.7)-1.35;
+  const sd=Math.hypot(Math.max(dx,0),Math.max(dz,0))+Math.min(Math.max(dx,dz),0)-0.3;
+  const P=1-sstep(-0.02,0.38,sd);
+  const base=0.35+(fbm(x*1.2,z*1.2,3)-0.5)*0.1;
+  let h=base+M+P*1.55+P*(fbm(x*3,z*3,2)-0.5)*0.05;
+  const xc=-0.6+0.9*Math.sin(z*0.55+0.4),d=Math.abs(x-xc);
+  const w=0.55+0.4*sstep(-4,2.5,z);
+  const t=Math.pow(Math.max(0,1-d/w),1.2);
+  const vf=sstep(-4.4,-3.0,z)*(1-sstep(3.2,4.6,z));
+  const vv=t*vf;
+  h=h+(0.06-h)*vv;
+  let k=2;
+  if(P>0.5)k=3;else if(vv>0.3)k=1;else if(M>0.45||h>1.0)k=0;
+  const nn=fbm(x*3,z*3,3);
+  let c=mix3(COL.g1,COL.g2,nn);
+  const rock=mix3(COL.r1,COL.r2,fbm(x*4+9,z*4,3));
+  c=mix3(c,rock,sstep(0.25,0.75,M));
+  c=mix3(c,COL.snow,sstep(2.15,2.75,h)*(P>0.2?0:1));
+  c=mix3(c,COL.val,sstep(0.55,0.9,vv)*(1-sstep(0.5,1.2,M)));
+  const river=vf>0.45&&d<0.1+0.06*sstep(-3,3,z);
+  if(river)c=mix3(c,COL.water,0.9);
+  if(P>0.03){
+    const top=mix3(COL.top1,COL.top2,nn);
+    const pc=mix3(COL.cliff,top,sstep(0.72,0.98,P));
+    c=mix3(c,pc,sstep(0.03,0.2,P));
+  }
+  return{h,k,c};
+}
+const LABELS=[{k:0,x:-2.3,z:-3.9},{k:1,x:-0.25,z:0.1},{k:2,x:2.3,z:3.3},{k:3,x:3,z:-1.7}];
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+function TerrainView({selected,onSelect,exag,auto,onInteract,resetKey,tilt,onTilt}){
+  const stage=useRef(null),api=useRef(null),[fail,setFail]=useState(false);
+  const cbTilt=useRef(onTilt),cbSel=useRef(onSelect),cbInt=useRef(onInteract),autoRef=useRef(auto),selRef=useRef(selected),exRef=useRef(exag);
+  cbSel.current=onSelect;cbInt.current=onInteract;cbTilt.current=onTilt;autoRef.current=auto;selRef.current=selected;exRef.current=exag;
+  useEffect(()=>{
+    const host=stage.current;let renderer;
+    try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}catch(e){setFail(true);return}
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    host.insertBefore(renderer.domElement,host.firstChild);
+    const dom=renderer.domElement;
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(40,1,0.1,100);
+    scene.add(new THREE.HemisphereLight(0xffffff,0x4a5a66,0.8));
+    const sun=new THREE.DirectionalLight(0xfff4e0,0.85);sun.position.set(6,10,5);scene.add(sun);
+    const fill=new THREE.DirectionalLight(0xaac4ff,0.25);fill.position.set(-6,4,-5);scene.add(fill);
+
+    const N=150,S=10,V=(N+1)*(N+1);
+    const pos=new Float32Array(V*3),col=new Float32Array(V*3),base=new Float32Array(V*3),cls=new Uint8Array(V),H=new Float32Array(V);
+    for(let iz=0;iz<=N;iz++)for(let ix=0;ix<=N;ix++){
+      const i=iz*(N+1)+ix,x=-S/2+ix*S/N,z=-S/2+iz*S/N,f=sample(x,z);
+      pos[i*3]=x;pos[i*3+1]=f.h;pos[i*3+2]=z;H[i]=f.h;cls[i]=f.k;base.set(f.c,i*3);
+    }
+    col.set(base);
+    const idx=[];
+    for(let iz=0;iz<N;iz++)for(let ix=0;ix<N;ix++){const a=iz*(N+1)+ix,b=a+1,c=a+N+1,d=c+1;idx.push(a,c,b,b,c,d)}
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+    geo.setIndex(idx);geo.computeVertexNormals();
+    const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95,metalness:0}));
+    const group=new THREE.Group();group.add(mesh);scene.add(group);
+
+    const bands=[[-0.7,-0.45,'#4B3B2D'],[-0.45,-0.2,'#8A6F4E'],[-0.2,0.05,'#6D5640'],[0.05,99,'#94795A']];
+    const wp=[],wc=[];
+    const edge=(pts)=>{for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];
+      for(const [lo,hi,hc] of bands){
+        if(a[1]<=lo&&b[1]<=lo)continue;
+        const ya=Math.max(Math.min(a[1],hi),lo),yb=Math.max(Math.min(b[1],hi),lo),c=hex3(hc);
+        const q=[[a[0],lo,a[2]],[b[0],lo,b[2]],[b[0],yb,b[2]],[a[0],lo,a[2]],[b[0],yb,b[2]],[a[0],ya,a[2]]];
+        for(const v of q){wp.push(v[0],v[1],v[2]);wc.push(c[0],c[1],c[2])}
+      }}};
+    const line=(fn)=>{const p=[];for(let i=0;i<=N;i++){const j=fn(i);p.push([pos[j*3],pos[j*3+1],pos[j*3+2]])}return p};
+    edge(line(i=>N*(N+1)+i));edge(line(i=>i));edge(line(i=>i*(N+1)));edge(line(i=>i*(N+1)+N));
+    const wg=new THREE.BufferGeometry();
+    wg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(wp),3));
+    wg.setAttribute('color',new THREE.BufferAttribute(new Float32Array(wc),3));wg.computeVertexNormals();
+    group.add(new THREE.Mesh(wg,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,side:THREE.DoubleSide})));
+    const ped=new THREE.Mesh(new THREE.BoxGeometry(S+0.5,0.16,S+0.5),new THREE.MeshStandardMaterial({color:0x2a2f33,roughness:.8}));
+    ped.position.y=-0.78;scene.add(ped);
+
+    const st={theta:0.55,phi:1.0,r:15.5};
+    const target=new THREE.Vector3(0,0.5,0);
+    const baseR=()=>(host.clientWidth/host.clientHeight<0.9?22:15.5);
+    const camPos=()=>{camera.position.set(target.x+st.r*Math.sin(st.phi)*Math.sin(st.theta),target.y+st.r*Math.cos(st.phi),target.z+st.r*Math.sin(st.phi)*Math.cos(st.theta));camera.lookAt(target)};
+    const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()};
+    const ro=new ResizeObserver(resize);ro.observe(host);resize();st.r=baseR();
+
+    const setSel=(sel)=>{
+      for(let i=0;i<V;i++){
+        const k=cls[i];let r=base[i*3],g=base[i*3+1],b=base[i*3+2];
+        if(sel!=null){
+          if(k===sel){r+=(COL.mark[0]-r)*0.3;g+=(COL.mark[1]-g)*0.3;b+=(COL.mark[2]-b)*0.3}
+          else{r*=0.7;g*=0.7;b*=0.7}
+        }
+        col[i*3]=r;col[i*3+1]=g;col[i*3+2]=b;
+      }
+      geo.attributes.color.needsUpdate=true;
+    };
+    const setExag=(e)=>{group.scale.y=e};
+    const reset=()=>{st.theta=0.55;st.phi=1.0;st.r=baseR()};
+    api.current={setSel,setExag,reset,setTilt:v=>{st.phi=v}};
+    setSel(selRef.current);setExag(exRef.current);
+
+    const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+    const pick=(e)=>{const rc=dom.getBoundingClientRect();ndc.set((e.clientX-rc.left)/rc.width*2-1,-((e.clientY-rc.top)/rc.height)*2+1);
+      ray.setFromCamera(ndc,camera);const hit=ray.intersectObject(mesh)[0];return hit?sample(hit.point.x,hit.point.z).k:null};
+    const ptrs=new Map();let moved=0,pinch=0,drag=false,lastHover=0;
+    const dist=()=>{const p=[...ptrs.values()];return Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1])||1};
+    const down=e=>{try{dom.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,[e.clientX,e.clientY]);if(ptrs.size===1)moved=0;drag=true;if(ptrs.size===2)pinch=dist()};
+    const move=e=>{
+      if(ptrs.has(e.pointerId)){
+        const p=ptrs.get(e.pointerId),dx=e.clientX-p[0],dy=e.clientY-p[1];ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+        if(ptrs.size===1){st.theta-=dx*0.006;if(e.pointerType!=='touch'){st.phi=clamp(st.phi-dy*0.006,0.2,1.45);cbTilt.current(st.phi)}moved+=Math.abs(dx)+Math.abs(dy);if(moved>6)cbInt.current()}
+        else if(ptrs.size===2){const d=dist();st.r=clamp(st.r*pinch/d,6,26);pinch=d;moved+=10;cbInt.current()}
+      }else{
+        const now=performance.now();if(now-lastHover<70)return;lastHover=now;
+        host.style.cursor=pick(e)!=null?'pointer':'grab';
+      }
+    };
+    const up=e=>{const had=ptrs.delete(e.pointerId);drag=ptrs.size>0;if(had&&moved<6&&ptrs.size===0&&e.type==='pointerup'){const k=pick(e);if(k!=null)cbSel.current(k)}};
+    const wheel=e=>{e.preventDefault();st.r=clamp(st.r*(1+e.deltaY*0.0012),6,26);cbInt.current()};
+    const key=e=>{
+      const m={ArrowLeft:()=>st.theta-=0.12,ArrowRight:()=>st.theta+=0.12,ArrowUp:()=>st.phi=clamp(st.phi-0.08,0.2,1.45),ArrowDown:()=>st.phi=clamp(st.phi+0.08,0.2,1.45),'+':()=>st.r=clamp(st.r-1,6,26),'-':()=>st.r=clamp(st.r+1,6,26)}[e.key];
+      if(m){e.preventDefault();m();cbTilt.current(st.phi);cbInt.current()}
+    };
+    dom.addEventListener('pointerdown',down);dom.addEventListener('pointermove',move);dom.addEventListener('pointerup',up);dom.addEventListener('pointercancel',up);
+    dom.addEventListener('wheel',wheel,{passive:false});host.addEventListener('keydown',key);
+
+    const labels=[...host.querySelectorAll('.tlabel')],v3=new THREE.Vector3();let raf;
+    const loop=()=>{
+      raf=requestAnimationFrame(loop);
+      if(autoRef.current&&!drag)st.theta+=0.0035;
+      camPos();renderer.render(scene,camera);
+      const w=host.clientWidth,h=host.clientHeight;
+      labels.forEach((el,i)=>{const L=LABELS[i];v3.set(L.x,sample(L.x,L.z).h*group.scale.y+0.3,L.z).project(camera);
+        if(v3.z>1){el.style.visibility='hidden';return}
+        el.style.visibility='visible';
+        el.style.transform='translate('+((v3.x*.5+.5)*w).toFixed(1)+'px,'+((-v3.y*.5+.5)*h).toFixed(1)+'px) translate(-50%,-100%)';
+      });
+    };
+    loop();
+    return()=>{cancelAnimationFrame(raf);ro.disconnect();
+      dom.removeEventListener('pointerdown',down);dom.removeEventListener('pointermove',move);dom.removeEventListener('pointerup',up);dom.removeEventListener('pointercancel',up);
+      dom.removeEventListener('wheel',wheel);host.removeEventListener('keydown',key);
+      geo.dispose();wg.dispose();renderer.dispose();if(dom.parentNode)dom.parentNode.removeChild(dom);api.current=null};
+  },[]);
+  useEffect(()=>{api.current&&api.current.setSel(selected)},[selected]);
+  useEffect(()=>{api.current&&api.current.setExag(exag)},[exag]);
+  useEffect(()=>{if(resetKey&&api.current)api.current.reset()},[resetKey]);
+  useEffect(()=>{api.current&&api.current.setTilt(tilt)},[tilt]);
+  return html`<div class="stage" ref=${stage} tabIndex="0" role="application" aria-label="مجسم ثلاثي الأبعاد للتضاريس. استخدم الأسهم للتدوير وعلامتي زائد وناقص للتقريب.">
+    ${fail?html`<div class="fail">تعذّر تشغيل العرض ثلاثي الأبعاد في هذا المتصفح. جرّب متصفحًا يدعم WebGL.</div>`:null}
+    ${LABELS.map(L=>html`<button key=${L.k} class="tlabel" aria-pressed=${selected===L.k} onClick=${()=>onSelect(L.k)}>${FEATURES[L.k].name}</button>`)}
+    <div class="hint">اسحب يمينًا ويسارًا للتدوير · اقرص للتقريب · اضغط على أي شكل</div>
+  </div>`;
+}
+
+function TerrainTab(){
+  const [sel,setSel]=useState(null);
+  const [exag,setExag]=useState(1);
+  const [auto,setAuto]=useState(!REDUCED);
+  const [rk,setRk]=useState(0);
+  const [tilt,setTilt]=useState(1);
+  const f=sel==null?null:FEATURES[sel];
+  return html`<div class="t-grid">
+    <div style=${{minWidth:0}}>
+      <${TerrainView} selected=${sel} onSelect=${setSel} exag=${exag} auto=${auto} onInteract=${()=>setAuto(false)} resetKey=${rk} tilt=${tilt} onTilt=${setTilt}/>
+      <div class="ctrl">
+        <label for="exag">تكبير الارتفاعات <input id="exag" type="range" min="0.6" max="2" step="0.1" value=${exag} onChange=${e=>setExag(+e.target.value)}/> <span>${exag.toFixed(1)}×</span></label>
+        <label for="tilt">زاوية النظر <input id="tilt" type="range" min="0.3" max="1.45" step="0.05" value=${tilt} onChange=${e=>{setTilt(+e.target.value);setAuto(false)}}/></label>
+        <button class="btn" aria-pressed=${auto} onClick=${()=>setAuto(!auto)}>دوران تلقائي</button>
+        <button class="btn" onClick=${()=>{setRk(rk+1);setTilt(1);setAuto(false)}}>إعادة الضبط</button>
+        <span class="note">مجسم مبسّط للتعليم، والمقاييس غير حقيقية.</span>
+      </div>
+    </div>
+    <aside class="panel" aria-live="polite">
+      ${f?html`
+        <div style=${{display:'flex',alignItems:'center',gap:'12px'}}>
+          <span class="swatch" style=${{background:f.color}}></span>
+          <h2>${f.name}<span class="en">${f.en}</span></h2>
+        </div>
+        <p style=${{marginTop:'10px'}}>${f.def}</p>
+        <dl>${f.facts.map(([a,b])=>html`<${React.Fragment} key=${a}><dt>${a}</dt><dd>${b}</dd><//>`)}</dl>
+        <h3>كيف تتكوّن؟</h3><p>${f.how}</p>
+        <h3>مثال من مصر</h3><p>${f.egypt}</p>
+        <div class="fact"><b>هل تعلم؟</b> ${f.know}</div>
+        <div class="row-btns">
+          <button class="btn pri" onClick=${()=>setSel((sel+1)%4)}>الشكل التالي: ${FEATURES[(sel+1)%4].name}</button>
+          <button class="btn" onClick=${()=>setSel(null)}>كل الأشكال</button>
+        </div>`
+      :html`
+        <h2>تضاريس سطح الأرض</h2>
+        <p style=${{marginTop:'8px',color:'var(--muted)'}}>دوّر المجسم، ثم اضغط على جبل أو وادٍ أو سهل أو هضبة لتقرأ شرحه وتراه مظللًا على الخريطة.</p>
+        <div class="feat-list">
+          ${FEATURES.map((x,i)=>html`<button key=${x.key} class="feat" onClick=${()=>setSel(i)}>
+            <span class="swatch" style=${{background:x.color}}></span>
+            <span><b>${x.name}</b><span class="d">${x.short}</span></span>
+          </button>`)}
+        </div>`}
+    </aside>
+  </div>`;
+}
+
+/* ======================= الصخور الرسوبية ======================= */
+const GROUPS=[
+ {id:'sedimentary',name:'الصخور الرسوبية',single:'رسوبي',
+  def:'تتكوّن الصخور الرسوبية من تراكم مواد على سطح الأرض أو في قاع الماء ثم تماسكها. وهي ثلاثة أنواع: فتاتية، وكيميائية، وعضوية.',
+  steps:[['التجوية','تفتّت الصخور القديمة وتحلّلها.'],['النقل','تحمل المياه والرياح والجليد الفتات.'],['الترسيب','يتراكم الفتات في طبقات.'],['التحجّر','ضغط الطبقات وتماسكها بمادة لاصقة.']]},
+ {id:'igneous',name:'الصخور النارية',single:'ناري',
+  def:'تتكوّن الصخور النارية عندما تبرد الصهارة (الصخور المنصهرة تحت الأرض) أو اللابة (الصهارة الخارجة على السطح) وتتصلب. وهي نوعان: جوفية وسطحية.',
+  steps:[['الانصهار','تصهر الحرارة العالية صخور باطن الأرض فتتكوّن الصهارة.'],['الصعود','الصهارة أخف من الصخور المحيطة فتتحرك إلى أعلى.'],['التبريد','ببطء تحت الأرض، أو بسرعة عند خروجها إلى السطح.'],['التصلب','تتبلور المعادن، أو يتكوّن زجاج بركاني إذا كان التبريد سريعًا جدًا.']]},
+ {id:'metamorphic',name:'الصخور المتحولة',single:'متحول',
+  def:'تتكوّن الصخور المتحولة عندما تتغير معادن صخر قديم وبنيته بفعل الحرارة والضغط الشديدين في باطن الأرض، دون أن ينصهر بالكامل.',
+  steps:[['الصخر الأصلي','رسوبي أو ناري أو متحول سابق.'],['الدفن','يغوص الصخر في الأرض ويتعرض لضغط كبير.'],['الحرارة','ترتفع الحرارة وتتحرك سوائل ساخنة بين المعادن.'],['التحوّل','تتبلور المعادن من جديد وتتغير البنية.']]}
+];
+const CATS=[
+ {id:'clastic',group:'sedimentary',name:'فتاتية',en:'Clastic',def:'تتكوّن من قطع (فتات) صخور أخرى تفتتت بالتجوية، ونقلتها المياه أو الرياح ثم تراكمت وتماسكت. وتُصنَّف حسب حجم الحبيبات.'},
+ {id:'chemical',group:'sedimentary',name:'كيميائية',en:'Chemical',def:'تترسب من محلول مائي عندما يتبخر الماء أو تتغير الظروف الكيميائية، فتتبلور المعادن وتتجمع.'},
+ {id:'organic',group:'sedimentary',name:'عضوية',en:'Organic',def:'تتكوّن من بقايا كائنات حية، مثل الأصداف والهياكل الصغيرة أو النباتات المدفونة.'},
+ {id:'plutonic',group:'igneous',name:'جوفية',en:'Intrusive',def:'تبرد فيها الصهارة ببطء شديد تحت سطح الأرض، فتكبر البلورات وتصبح ظاهرة بالعين المجردة.'},
+ {id:'volcanic',group:'igneous',name:'سطحية (بركانية)',en:'Extrusive',def:'تبرد فيها اللابة بسرعة على السطح أو قريبًا منه، فتكون بلوراتها دقيقة جدًا، وقد تتجمد على هيئة زجاج.'},
+ {id:'foliated',group:'metamorphic',name:'متورقة',en:'Foliated',def:'تترتب معادنها في طبقات أو أشرطة متوازية بفعل الضغط الموجّه، فتبدو مخططة أو تنفلق إلى صفائح.'},
+ {id:'nonfoliated',group:'metamorphic',name:'غير متورقة',en:'Non-foliated',def:'لا تظهر فيها أشرطة، وبلوراتها متداخلة متجانسة، وتتكوّن غالبًا من معدن واحد.'}
+];
+const ROCKS=[
+ {id:'conglomerate',cat:'clastic',name:'كونجلوميرات',en:'Conglomerate',seed:11,tex:'conglomerate',
+  grain:'حصى مستديرة أكبر من 2 مم',color:'متعدد الألوان حسب الحصى',hard:[5,7],acid:'يعتمد على المادة اللاصقة',
+  how:'نقلت الأنهار والأمواج حصى كبيرة مسافات طويلة فاستدارت حوافها، ثم تراكمت وتماسكت بمادة لاصقة أدق مثل الرمل أو السيليكا.',
+  uses:'مواد بناء وأساسات، وحجر للزينة.',egypt:'توجد طبقاتها في الصحراءين الشرقية والغربية حيث كانت تجري أنهار قديمة.',
+  clues:['صخر فتاتي يضم حصى مستديرة كبيرة ملتصقة في مادة أدق.','حبيباته أكبر من 2 مم وحوافها ملساء لأنها نُقلت بالماء مسافة طويلة.']},
+ {id:'breccia',cat:'clastic',name:'بريشيا',en:'Breccia',seed:23,tex:'breccia',
+  grain:'شظايا حادة الزوايا أكبر من 2 مم',color:'أحمر وبني ورمادي',hard:[5,7],acid:'يعتمد على المادة اللاصقة',
+  how:'تتكوّن من شظايا صخرية حادة الزوايا نُقلت مسافة قصيرة جدًا، كما في الانهيارات الصخرية وسفوح الجبال، ثم التحمت بمادة لاصقة.',
+  uses:'حجر للزينة والتكسية.',egypt:'تظهر في أماكن الانهيارات والصدوع بالجبال القريبة من الأودية.',
+  clues:['صخر فتاتي قطعه حادة الزوايا، فدلّ ذلك على أنها لم تُنقل بعيدًا.','شظايا مدببة محاطة بمادة لاصقة أدق، وتتكوّن عند سفوح الجبال.']},
+ {id:'sandstone',cat:'clastic',name:'الحجر الرملي',en:'Sandstone',seed:37,tex:'sandstone',
+  grain:'حبيبات بحجم الرمل (0.06 إلى 2 مم)',color:'أصفر وبني وأحمر',hard:[6,7],acid:'لا يفور غالبًا',
+  how:'تراكم رمل الأنهار والشواطئ والصحاري طبقات، ثم ضغطته الطبقات العليا وربطت حبيباته (الكوارتز غالبًا) مادة لاصقة.',
+  uses:'بناء المعابد والمنشآت، وأحجار الرحى، وخزانات للمياه الجوفية.',egypt:'بُنيت منه معابد الكرنك وإدفو، واستُخرج من محاجر جبل السلسلة قرب أسوان.',
+  clues:['صخر فتاتي حبيباته بحجم حبات الرمل ويتكوّن معظمه من الكوارتز.','ملمسه خشن، وبُنيت منه معابد الكرنك وإدفو.']},
+ {id:'shale',cat:'clastic',name:'الطفل الصفحي',en:'Shale',seed:41,tex:'shale',
+  grain:'طين ناعم جدًا أصغر من 0.004 مم',color:'رمادي ورمادي مخضر وأسود',hard:[2,3],acid:'لا يفور',
+  how:'ترسب الطين الدقيق في المياه الهادئة كالبحيرات وقاع البحار، فتكوّنت طبقات رقيقة جدًا، ثم انضغطت فصار الصخر ينفلق إلى صفائح.',
+  uses:'صناعة الطوب والفخار والأسمنت، وبعضه مصدر للنفط (الطفل الزيتي).',egypt:'يظهر تكوين إسنا الطفلي في صعيد مصر.',
+  clues:['صخر فتاتي ناعم جدًا من الطين ينفلق إلى صفائح رقيقة.','يتكوّن في المياه الهادئة كالبحيرات وقاع البحار العميقة.']},
+ {id:'halite',cat:'chemical',name:'الملح الصخري',en:'Rock Salt (Halite)',seed:53,tex:'salt',
+  grain:'بلورات مكعبة',color:'أبيض إلى شفاف، وقد يميل للوردي',hard:[2,3],acid:'لا يفور، لكنه يذوب في الماء',
+  how:'تبخرت مياه بحار قديمة وبحيرات مالحة في جو حار، فترسب كلوريد الصوديوم وتبلور طبقات سميكة.',
+  uses:'الغذاء وحفظ الطعام والصناعات الكيميائية.',egypt:'ملاحات الإسكندرية وبورفؤاد، وبحيرات واحة سيوة.',
+  clues:['صخر كيميائي يتكوّن من تبخر مياه البحيرات المالحة، ويذوب في الماء.','بلوراته مكعبة الشكل وصلادته نحو 2.5.']},
+ {id:'gypsum',cat:'chemical',name:'الجبس',en:'Gypsum',seed:61,tex:'gypsum',
+  grain:'بلورات ليفية أو لؤلؤية',color:'أبيض ورمادي فاتح',hard:[2,2],acid:'لا يفور',
+  how:'ترسب كبريتات الكالسيوم المائية عندما تبخرت مياه مالحة ضحلة. ويمكن خدشه بالظفر.',
+  uses:'اللياسة والألواح الجبسية والأسمنت وتجبير الكسور.',egypt:'يتوفر على ساحل البحر الأحمر وفي سيناء، واستخدمه المصريون القدماء في مونة البناء.',
+  clues:['صخر كيميائي صلادته 2، فيمكن خدشه بالظفر.','ينتج من تبخر المياه المالحة، ويدخل مسحوقه المحروق في اللياسة.']},
+ {id:'travertine',cat:'chemical',name:'الترافرتين',en:'Travertine',seed:71,tex:'travertine',
+  grain:'بلورات دقيقة في أشرطة وثقوب',color:'بيج وكريمي وبني',hard:[3,4],acid:'يفور',
+  how:'ترسبت كربونات الكالسيوم من مياه الينابيع الغنية بالأملاح عند خروجها إلى السطح وفقدانها غاز ثاني أكسيد الكربون.',
+  uses:'تكسية الجدران وأرضيات المباني، ونحت الأواني.',egypt:'هو «الألباستر المصري» الذي نحت منه القدماء أواني وتماثيل، واستخرجوه من محاجر في صعيد مصر.',
+  clues:['صخر كيميائي من كربونات الكالسيوم ترسب من مياه الينابيع، وفيه أشرطة وثقوب صغيرة ويفور مع الحمض.','استُخدم في مصر القديمة تحت اسم «الألباستر المصري».']},
+ {id:'flint',cat:'chemical',name:'الصوان',en:'Flint (Chert)',seed:83,tex:'flint',
+  grain:'سيليكا دقيقة جدًا',color:'رمادي داكن إلى أسود، وقشرة فاتحة',hard:[7,7],acid:'لا يفور',
+  how:'ترسبت السيليكا من الماء وتجمعت في كتل (عُقَد) داخل طبقات الحجر الجيري والطباشير. وينكسر بحواف حادة كالزجاج.',
+  uses:'أدوات الإنسان القديم، وإشعال النار، وصناعة الصنفرة.',egypt:'تنتشر عقده في صخور الحجر الجيري على جانبي وادي النيل.',
+  clues:['صخر كيميائي من السيليكا شديد الصلادة (7) ولا يفور مع الحمض.','ينكسر بحواف حادة كالزجاج، واستعمله الإنسان القديم في أدواته.']},
+ {id:'limestone',cat:'organic',name:'الحجر الجيري',en:'Limestone',seed:97,tex:'limestone',
+  grain:'دقيق إلى متوسط، وفيه أصداف متحجرة',color:'أبيض ورمادي وأصفر فاتح',hard:[3,3],acid:'يفور بشدة',
+  how:'تراكمت أصداف وهياكل كائنات بحرية من كربونات الكالسيوم في قاع البحار الدافئة الضحلة ملايين السنين، ثم تماسكت.',
+  uses:'البناء وصناعة الأسمنت والجير.',egypt:'بُنيت منه أهرامات الجيزة، وتتكوّن منه معظم هضبة الجيزة.',
+  clues:['صخر عضوي يفور بشدة عند إضافة حمض مخفف، ويحوي أصدافًا متحجرة.','بُنيت منه أهرامات الجيزة.']},
+ {id:'chalk',cat:'organic',name:'الطباشير',en:'Chalk',seed:101,tex:'chalk',
+  grain:'ناعم جدًا من هياكل مجهرية',color:'أبيض ناصع',hard:[1,2],acid:'يفور',
+  how:'تكوّن من تراكم هياكل كائنات بحرية مجهرية (طحالب دقيقة) على قاع بحر هادئ وعميق نسبيًا.',
+  uses:'الكتابة والرسم، وتحسين التربة، وصناعة الأسمنت.',egypt:'تشكلت منه الأشكال البيضاء الغريبة في الصحراء البيضاء قرب الفرافرة بفعل الرياح.',
+  clues:['صخر عضوي أبيض ناعم هش يترك أثرًا عند الكتابة، ويتكوّن من هياكل كائنات دقيقة جدًا.','تتشكل منه الصخور البيضاء الغريبة في صحراء الفرافرة، ويفور مع الحمض.']},
+ {id:'coal',cat:'organic',name:'الفحم',en:'Coal',seed:113,tex:'coal',
+  grain:'ناعم، يتكوّن من طبقات',color:'أسود إلى بني داكن',hard:[1,3],acid:'لا يفور',
+  how:'دُفنت نباتات المستنقعات القديمة تحت الطين والرمل، فضغطتها الطبقات وسخّنتها فتركز فيها الكربون عبر ملايين السنين.',
+  uses:'وقود لتوليد الكهرباء وفي الصناعة.',egypt:'يُستخرج الفحم المصري من منجم المغارة في شمال سيناء.',
+  clues:['صخر عضوي أسود قابل للاشتعال، يتكوّن من بقايا نباتات مستنقعات دُفنت وضُغطت.','يُستخرج في مصر من منجم المغارة بسيناء.']},
+ {id:'granite',cat:'plutonic',name:'الجرانيت',en:'Granite',seed:131,tex:'granite',
+  grain:'بلورات خشنة ظاهرة بالعين',color:'وردي أو رمادي مع بقع سوداء',hard:[6,7],acid:'لا يفور',
+  how:'تبرد الصهارة الغنية بالسيليكا ببطء شديد في أعماق القشرة الأرضية على مدى ملايين السنين، فتنمو بلورات الفلسبار والكوارتز والميكا كبيرة وظاهرة.',
+  uses:'تكسية المباني والأرضيات وأسطح المطابخ والنصب التذكارية.',egypt:'من محاجر أسوان نحت القدماء المسلات والتوابيت، ومنها التابوت الموجود في حجرة الملك بالهرم الأكبر.',
+  clues:['صخر ناري جوفي بلوراته كبيرة ظاهرة، فيه الكوارتز والفلسبار والميكا.','نُحتت منه المسلات والتوابيت في أسوان، وهو شديد الصلادة.']},
+ {id:'diorite',cat:'plutonic',name:'الديوريت',en:'Diorite',seed:137,tex:'diorite',
+  grain:'بلورات متوسطة إلى خشنة',color:'رمادي مبقّع بالأبيض والأسود',hard:[5,6],acid:'لا يفور',
+  how:'يتكوّن من صهارة متوسطة التركيب بردت ببطء تحت الأرض. ويقع في لونه ومعادنه بين الجرانيت الفاتح والجابرو الداكن.',
+  uses:'النحت والأواني الزخرفية وتكسية الأرضيات.',egypt:'يظهر ضمن الصخور القديمة (صخور القاعدة) في الصحراء الشرقية وجنوب سيناء.',
+  clues:['صخر ناري جوفي يبدو كأنه مرشوش بالملح والفلفل: بقع بيضاء وسوداء متقاربة.','لونه وسط بين الجرانيت الفاتح والجابرو الداكن.']},
+ {id:'gabbro',cat:'plutonic',name:'الجابرو',en:'Gabbro',seed:149,tex:'gabbro',
+  grain:'بلورات خشنة',color:'أسود مخضر إلى رمادي داكن',hard:[5,6],acid:'لا يفور',
+  how:'يتكوّن من صهارة فقيرة بالسيليكا بردت ببطء تحت الأرض، وهو المقابل الجوفي للبازلت. ويشكّل الجزء السفلي من قاع المحيطات.',
+  uses:'تكسية الأرضيات وصناعة الحجارة المكسّرة للطرق، ويُباع تجاريًا أحيانًا باسم «الجرانيت الأسود».',egypt:'يظهر في الصحراء الشرقية ضمن كتل صخور قديمة كانت جزءًا من قاع محيط قديم.',
+  clues:['صخر ناري جوفي داكن اللون خشن البلورات، وهو المقابل الجوفي للبازلت.','يتكوّن منه الجزء السفلي من قاع المحيطات.']},
+ {id:'basalt',cat:'volcanic',name:'البازلت',en:'Basalt',seed:157,tex:'basalt',
+  grain:'دقيقة جدًا لا تُرى بالعين، وفيها فقاعات أحيانًا',color:'أسود إلى رمادي داكن',hard:[5,6],acid:'لا يفور',
+  how:'تبرد اللابة الغنية بالحديد والمغنيسيوم بسرعة بعد خروجها إلى السطح، فلا تجد البلورات وقتًا لتكبر. وهو أكثر الصخور البركانية انتشارًا، ويكوّن معظم قيعان المحيطات.',
+  uses:'رصف الطرق وأساسات السكك الحديدية وصناعة الألياف الصخرية للعزل.',egypt:'استخدمه القدماء في رصف معبد الهرم الأكبر، واستخرجوه من محاجر قريبة من الفيوم.',
+  clues:['صخر ناري بركاني أسود دقيق الحبيبات، وقد تظهر فيه ثقوب صغيرة من فقاعات الغاز.','يتكوّن من تبريد سريع للابة، وهو أكثر الصخور البركانية انتشارًا.']},
+ {id:'obsidian',cat:'volcanic',name:'الأوبسيديان',en:'Obsidian',seed:163,tex:'obsidian',
+  grain:'زجاج بركاني بلا بلورات',color:'أسود لامع، وقد يميل للبني أو الأخضر',hard:[5,6],acid:'لا يفور',
+  how:'تبرد لابة غنية بالسيليكا بسرعة كبيرة جدًا، فلا تتبلور وتتجمد على هيئة زجاج طبيعي. وينكسر بحواف منحنية حادة جدًا.',
+  uses:'أدوات القطع عند الإنسان القديم، والحلي، وشفرات جراحية متخصصة.',egypt:'لا يتوفر في مصر بكثرة، فاستورده القدماء واستخدموه في الحلي والأدوات الصغيرة.',
+  clues:['صخر ناري زجاجي أسود لامع بلا بلورات، تبرّد بسرعة شديدة.','ينكسر بحواف منحنية حادة، واستخدمه الإنسان القديم في أدوات القطع.']},
+ {id:'pumice',cat:'volcanic',name:'الخفاف',en:'Pumice',seed:173,tex:'pumice',
+  grain:'رغوي مليء بالفقاعات',color:'أبيض ورمادي فاتح',hard:[5,6],acid:'لا يفور',
+  how:'تخرج لابة مشبعة بالغازات من فوهة بركان بعنف، فتتجمد وهي رغوية ويبقى الغاز محبوسًا فيها على هيئة فقاعات. لذلك هو خفيف جدًا حتى إنه يطفو على الماء.',
+  uses:'تنعيم الجلد والأسطح، وصناعة الخرسانة الخفيفة، وتنظيف الأحجار.',egypt:'لا توجد في مصر براكين نشطة، لكن الخفاف عُرف في المنطقة منذ القدم واستُخدم في الصقل.',
+  clues:['صخر ناري بركاني رغوي مليء بالثقوب، وخفيف إلى حد أنه يطفو على الماء.','يتكوّن عندما تتجمد لابة مشبعة بالغازات، وتُصقل به الأسطح.']},
+ {id:'slate',cat:'foliated',name:'الأردواز',en:'Slate',seed:181,tex:'slate',
+  grain:'دقيقة جدًا',color:'رمادي داكن إلى أزرق ومخضر',hard:[3,4],acid:'لا يفور',
+  how:'يتحول الطفل الصفحي بحرارة وضغط خفيفين نسبيًا، فتترتب معادن الطين في صفائح متوازية تجعل الصخر ينفلق إلى ألواح رقيقة ملساء.',
+  uses:'تسقيف المنازل، والألواح، والبلاط، وأسطح الكتابة القديمة.',egypt:'تشبهه حجارة وادي الحمامات (الجرايواكي المتحول قليلًا) التي نحت منها المصريون التوابيت والتماثيل.',
+  clues:['صخر متحول متورق ينفلق إلى ألواح رقيقة ملساء، وأصله طفل صفحي.','تحول بحرارة وضغط خفيفين نسبيًا، ويُستعمل في تسقيف المنازل.']},
+ {id:'schist',cat:'foliated',name:'الشست',en:'Schist',seed:191,tex:'schist',
+  grain:'متوسطة إلى خشنة، مع رقائق ميكا لامعة',color:'فضي ورمادي وبني، وبقع حمراء أحيانًا',hard:[3,5],acid:'لا يفور',
+  how:'يتحول الصخر الطيني بحرارة وضغط أعلى من الأردواز، فتكبر رقائق الميكا وتترتب في أوراق متوازية تلمع في الضوء، ويظهر معها معدن الجارنت أحيانًا.',
+  uses:'تكسية الجدران وأسوار الحدائق، ويُستدل به على نطاقات المعادن.',egypt:'يدخل في صخور القاعدة القديمة بجنوب سيناء والصحراء الشرقية.',
+  clues:['صخر متحول متورق يلمع من رقائق الميكا الكبيرة، وينفلق على سطوح متموجة.','يتكوّن بحرارة وضغط أعلى من الأردواز، وقد تظهر فيه حبيبات حمراء من الجارنت.']},
+ {id:'gneiss',cat:'foliated',name:'النيس',en:'Gneiss',seed:197,tex:'gneiss',
+  grain:'خشنة، في أشرطة متعاقبة',color:'أشرطة فاتحة وداكنة متبادلة',hard:[6,7],acid:'لا يفور',
+  how:'يتكوّن عند حرارة وضغط عاليين جدًا، فتنفصل المعادن الفاتحة (الكوارتز والفلسبار) عن الداكنة (الميكا والهورنبلند) في أشرطة. وأصله غالبًا الجرانيت أو صخور رسوبية.',
+  uses:'البناء وتكسية الأرضيات وأحجار الرصف.',egypt:'يكوّن جزءًا كبيرًا من صخور القاعدة القديمة في الصحراء الشرقية وجنوب سيناء.',
+  clues:['صخر متحول متورق فيه أشرطة فاتحة وداكنة متبادلة وخشنة البلورات.','يتكوّن عند حرارة وضغط عاليين جدًا، ويشبه الجرانيت المخطط.']},
+ {id:'marble',cat:'nonfoliated',name:'الرخام',en:'Marble',seed:211,tex:'marble',
+  grain:'بلورات متداخلة متجانسة',color:'أبيض، مع عروق رمادية أو ملونة',hard:[3,4],acid:'يفور',
+  how:'يتحول الحجر الجيري بالحرارة والضغط، فتعيد بلورات الكالسيت ترتيبها وتتداخل فتختفي الأصداف، وتظهر العروق من شوائب المعادن.',
+  uses:'النحت والتماثيل وتكسية المباني والأرضيات.',egypt:'يُستخرج الرخام المصري من محاجر في الصحراء الشرقية وسيناء.',
+  clues:['صخر متحول غير متورق أصله الحجر الجيري، يفور مع الحمض ويُنحت منه التماثيل.','بلوراته متداخلة متجانسة، وتظهر فيه عروق ملونة من الشوائب.']},
+ {id:'quartzite',cat:'nonfoliated',name:'الكوارتزيت',en:'Quartzite',seed:223,tex:'quartzite',
+  grain:'حبيبات كوارتز متداخلة',color:'أبيض ووردي وأحمر',hard:[7,7],acid:'لا يفور',
+  how:'يتحول الحجر الرملي الغني بالكوارتز بحرارة وضغط عاليين، فتلتحم حبيباته في كتلة واحدة صلبة، وينكسر الصخر عبر الحبيبات لا حولها.',
+  uses:'رصف الطرق وصناعة الزجاج وتكسية الأرضيات.',egypt:'من محاجر الجبل الأحمر قرب القاهرة نحت القدماء تمثالي ممنون.',
+  clues:['صخر متحول غير متورق أصله الحجر الرملي، وهو شديد الصلادة (7) ولا يفور مع الحمض.','تتماسك حبيباته حتى ينكسر عبرها، وصنع منه المصريون تمثالي ممنون.']}
+];
+const catOf=id=>CATS.find(c=>c.id===id);
+
+/* ====== رسم ملمس كل صخر (SVG مولَّد برمجيًا) ====== */
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const pk=(R,a)=>a[Math.floor(R()*a.length)];
+const dots=(R,n,fill,r0,r1,o)=>{let s='';for(let i=0;i<n;i++)s+=`<circle cx="${(R()*240).toFixed(1)}" cy="${(R()*240).toFixed(1)}" r="${(r0+R()*(r1-r0)).toFixed(2)}" fill="${fill}" opacity="${o}"/>`;return s};
+const G={
+ conglomerate(R){const p=['#8d8a86','#b57f66','#c9b79b','#6f7479','#d1a98c','#9a7b64','#a99f94'];let s='<rect width="240" height="240" fill="#a58f74"/>'+dots(R,260,'#7d6a52',.6,2,.5);
+  for(let i=0;i<44;i++){const rx=11+R()*16,ry=rx*(.62+R()*.38);s+=`<g transform="translate(${(R()*240).toFixed(1)} ${(R()*240).toFixed(1)}) rotate(${(R()*180).toFixed(0)})"><ellipse rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="${pk(R,p)}" stroke="#5f4e3c" stroke-width="1.4"/><ellipse rx="${(rx*.55).toFixed(1)}" ry="${(ry*.4).toFixed(1)}" cx="${(-rx*.15).toFixed(1)}" cy="${(-ry*.2).toFixed(1)}" fill="#fff" opacity=".14"/></g>`}return s},
+ breccia(R){const p=['#a0524a','#7a5a52','#c08a72','#5f5a57','#b36d5b','#8c7b70'];let s='<rect width="240" height="240" fill="#6b4a40"/>'+dots(R,200,'#3c2a24',.6,1.8,.5);
+  for(let i=0;i<34;i++){const cx=R()*240,cy=R()*240,r=12+R()*18,n=5+Math.floor(R()*3),pts=[];for(let k=0;k<n;k++){const a=k/n*6.283+R()*.5,rr=r*(.55+R()*.55);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}
+   s+=`<polygon points="${pts.join(' ')}" fill="${pk(R,p)}" stroke="#3c2a24" stroke-width="1.3" stroke-linejoin="miter"/>`}return s},
+ sandstone(R){let s='<rect width="240" height="240" fill="#d8ab6c"/>';
+  for(let b=0;b<9;b++){const y=b*28+R()*14;s+=`<path d="M0 ${y.toFixed(1)} C 60 ${(y+R()*14-7).toFixed(1)}, 150 ${(y+R()*14-7).toFixed(1)}, 240 ${(y+R()*10-5).toFixed(1)}" stroke="${b%2?'#b98446':'#e8c58c'}" stroke-width="${(6+R()*10).toFixed(1)}" fill="none" opacity=".45"/>`}
+  const c=['#a8743a','#f0d29a','#8a5e2e','#e6c283','#fff3d6'];for(let i=0;i<900;i++)s+=`<circle cx="${(R()*240).toFixed(1)}" cy="${(R()*240).toFixed(1)}" r="${(.5+R()*1.1).toFixed(2)}" fill="${c[i%5]}" opacity=".65"/>`;return s},
+ shale(R){let s='<rect width="240" height="240" fill="#6a6f75"/>';
+  for(let i=0;i<46;i++){const y=i*5.3+R()*3;s+=`<path d="M-5 ${y.toFixed(1)} Q 60 ${(y+R()*6-3).toFixed(1)} 120 ${(y+R()*4-2).toFixed(1)} T 245 ${(y+R()*5-2.5).toFixed(1)}" stroke="${R()>.5?'#4a4f55':'#8d939a'}" stroke-width="${(.6+R()*2.2).toFixed(1)}" fill="none" opacity=".75"/>`}
+  for(let i=0;i<5;i++){const y=R()*230;s+=`<path d="M${(R()*60).toFixed(0)} ${y.toFixed(0)} l${(60+R()*140).toFixed(0)} ${(R()*6-3).toFixed(1)}" stroke="#2f3338" stroke-width="1" opacity=".6"/>`}return s},
+ salt(R){let s='<rect width="240" height="240" fill="#e6ddd6"/>';const c=['#f6f1ec','#eadad4','#e0e8ef','#f8efe3','#ffffff'];
+  for(let i=0;i<36;i++){const w=16+R()*30;s+=`<g transform="translate(${(R()*240).toFixed(1)} ${(R()*240).toFixed(1)}) rotate(${(R()*30-15).toFixed(1)})"><rect x="${(-w/2).toFixed(1)}" y="${(-w/2).toFixed(1)}" width="${w.toFixed(1)}" height="${w.toFixed(1)}" fill="${c[i%5]}" stroke="#bfaea3" stroke-width="1.2"/><path d="M${(-w/2+3).toFixed(1)} ${(-w/2+3).toFixed(1)} h${(w*.45).toFixed(1)} M${(-w/2+3).toFixed(1)} ${(-w/2+3).toFixed(1)} v${(w*.45).toFixed(1)}" stroke="#fff" stroke-width="2" opacity=".8"/></g>`}return s},
+ gypsum(R){let s='<rect width="240" height="240" fill="#ece8de"/>';
+  for(let i=0;i<150;i++){const l=40+R()*90;s+=`<g transform="translate(${(R()*300-30).toFixed(1)} ${(R()*240).toFixed(1)}) rotate(${(-24+R()*8).toFixed(1)})"><rect width="${l.toFixed(0)}" height="${(1+R()*3.5).toFixed(1)}" rx="1" fill="${pk(R,['#ffffff','#d9d2c2','#f6f3ea','#c8c0ae'])}" opacity=".85"/></g>`}return s},
+ travertine(R){let s='<rect width="240" height="240" fill="#d9c7a5"/>';const c=['#eadfc6','#c4ac80','#f2ead8','#b89c6c','#dcc9a2'];let y=-10;
+  while(y<250){const h=8+R()*22;s+=`<path d="M0 ${y.toFixed(1)} C 70 ${(y+R()*14-7).toFixed(1)},160 ${(y+R()*14-7).toFixed(1)},240 ${y.toFixed(1)} L240 ${(y+h).toFixed(1)} C 160 ${(y+h+R()*12-6).toFixed(1)},70 ${(y+h+R()*12-6).toFixed(1)},0 ${(y+h).toFixed(1)} Z" fill="${pk(R,c)}" opacity=".9"/>`;y+=h}
+  for(let i=0;i<40;i++){const cx=R()*240,cy=R()*240,rx=1.5+R()*5;s+=`<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${(rx*.55).toFixed(1)}" fill="#8b7551" opacity=".6"/><ellipse cx="${cx.toFixed(1)}" cy="${(cy+rx*.6).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${(rx*.3).toFixed(1)}" fill="#f6efdf" opacity=".6"/>`}return s},
+ flint(R){let s='<defs><radialGradient id="fg" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#6a635c"/><stop offset="1" stop-color="#262321"/></radialGradient></defs><rect width="240" height="240" fill="url(#fg)"/>';
+  for(let i=0;i<9;i++){const r=14+i*13+R()*4;s+=`<ellipse cx="${(100+R()*10).toFixed(1)}" cy="${(95+R()*10).toFixed(1)}" rx="${(r*1.15).toFixed(1)}" ry="${r.toFixed(1)}" fill="none" stroke="#9a928a" stroke-width="${(.7+R()).toFixed(1)}" opacity="${(.18+R()*.18).toFixed(2)}" stroke-dasharray="${(40+R()*60).toFixed(0)} ${(10+R()*30).toFixed(0)}"/>`}
+  s+='<path d="M0 205 Q 60 185 120 215 T 240 195 L240 240 L0 240Z" fill="#cfc7b6" opacity=".85"/>';
+  for(let i=0;i<7;i++)s+=`<ellipse cx="${(R()*240).toFixed(0)}" cy="${(R()*240).toFixed(0)}" rx="${(6+R()*14).toFixed(0)}" ry="${(3+R()*7).toFixed(0)}" fill="#c9c1b2" opacity=".35"/>`;return s},
+ limestone(R){let s='<rect width="240" height="240" fill="#cdc2aa"/>'+dots(R,320,'#a89c82',.5,1.5,.55);
+  for(let i=0;i<10;i++){const cx=R()*220+10,cy=R()*220+10,r=9+R()*11;let d='';for(let t=0;t<=17.3;t+=.25){const rr=r*.12+r*.88*t/17.3;d+=(t?'L':'M')+(cx+Math.cos(t)*rr).toFixed(1)+' '+(cy+Math.sin(t)*rr*.92).toFixed(1)}
+   s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#e8dfca" stroke="#8f8164" stroke-width="1.2"/><path d="${d}" fill="none" stroke="#9a8b6e" stroke-width=".9"/>`}
+  for(let i=0;i<6;i++)s+=`<g transform="translate(${(R()*220+10).toFixed(0)} ${(R()*220+10).toFixed(0)}) rotate(${(R()*360).toFixed(0)})"><path d="M-12 0 A12 9 0 0 1 12 0 Z" fill="#efe7d3" stroke="#8f8164" stroke-width="1.1"/><path d="M-8 0 A8 6 0 0 1 8 0 M-4 0 A4 3 0 0 1 4 0" fill="none" stroke="#8f8164" stroke-width=".8"/></g>`;return s},
+ chalk(R){let s='<rect width="240" height="240" fill="#f2f0e9"/>'+dots(R,500,'#cfcabd',.4,1.3,.55);
+  for(let b=0;b<5;b++){const y=20+b*48+R()*12;s+=`<path d="M0 ${y.toFixed(0)} Q 120 ${(y+R()*10-5).toFixed(0)} 240 ${y.toFixed(0)}" stroke="#e1ddd0" stroke-width="${(3+R()*6).toFixed(0)}" fill="none" opacity=".7"/>`}
+  for(let i=0;i<6;i++)s+=`<ellipse cx="${(20+i*40+R()*14).toFixed(0)}" cy="${(120+R()*8).toFixed(0)}" rx="${(7+R()*8).toFixed(0)}" ry="${(4+R()*4).toFixed(0)}" fill="#4f4c48" opacity=".85"/>`;
+  for(let i=0;i<4;i++)s+=`<path d="M${(R()*240).toFixed(0)} ${(R()*240).toFixed(0)} l${(R()*40-20).toFixed(0)} ${(R()*40-20).toFixed(0)}" stroke="#b9b4a6" stroke-width=".9"/>`;return s},
+ coal(R){let s='<rect width="240" height="240" fill="#15161a"/>';
+  for(let i=0;i<34;i++){const y=R()*240;s+=`<path d="M0 ${y.toFixed(1)} L240 ${(y+R()*14-7).toFixed(1)}" stroke="${R()>.5?'#2a2d33':'#3b3f46'}" stroke-width="${(1+R()*7).toFixed(1)}" opacity=".8"/>`}
+  for(let i=0;i<12;i++){const x=R()*220,y=R()*220;s+=`<polygon points="${x.toFixed(0)},${y.toFixed(0)} ${(x+10+R()*30).toFixed(0)},${(y+R()*10).toFixed(0)} ${(x+R()*20).toFixed(0)},${(y+8+R()*18).toFixed(0)}" fill="#fff" opacity="${(.05+R()*.08).toFixed(2)}"/>`}
+  for(let i=0;i<6;i++)s+=`<path d="M${(R()*240).toFixed(0)} ${(R()*240).toFixed(0)} l${(R()*50-25).toFixed(0)} ${(R()*50-10).toFixed(0)} l${(R()*30-15).toFixed(0)} ${(R()*30).toFixed(0)}" stroke="#000" stroke-width="1.2" fill="none" opacity=".8"/>`;return s}
+};
+const cr=(R,n,pal,r0,r1,op,stroke)=>{let s='';for(let i=0;i<n;i++){const cx=R()*240,cy=R()*240,r=r0+R()*(r1-r0),k=5+Math.floor(R()*2),pts=[];for(let j=0;j<k;j++){const a=j/k*6.283+R()*.6,rr=r*(.65+R()*.55);pts.push((cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1))}s+=`<polygon points="${pts.join(' ')}" fill="${pk(R,pal)}" opacity="${op}"${stroke?` stroke="${stroke}" stroke-width=".6"`:''}/>`}return s};
+Object.assign(G,{
+ granite(R){return '<rect width="240" height="240" fill="#c9a698"/>'+cr(R,120,['#d98f7e','#e8b8a8','#f3eee8','#c47466'],5,13,.92)+cr(R,60,['#8e8f98','#a4a5ad'],3,8,.6)+cr(R,85,['#242326','#35343a'],2,6,.95)},
+ diorite(R){return '<rect width="240" height="240" fill="#b8b8b2"/>'+cr(R,120,['#f1f0ec','#e2e2dc','#ffffff'],4,10,.9)+cr(R,120,['#1f2022','#2c2d30','#3a3c40'],3,9,.95)+cr(R,40,['#8c8d88'],3,7,.7)},
+ gabbro(R){return '<rect width="240" height="240" fill="#2b2f33"/>'+cr(R,90,['#7f8790','#9aa1a8','#6a727a'],4,10,.85)+cr(R,120,['#161a1d','#1f2a25','#26352c'],4,11,.95)+cr(R,40,['#3c4a40'],3,8,.9)},
+ basalt(R){let s='<rect width="240" height="240" fill="#3a3d42"/>'+dots(R,500,'#55595f',.4,1.3,.5)+dots(R,300,'#1f2124',.4,1.2,.6)+cr(R,12,['#8f9a8a'],2,4,.7);
+  for(let i=0;i<18;i++){const rx=2+R()*5;s+=`<ellipse cx="${(R()*240).toFixed(1)}" cy="${(R()*240).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${(rx*(.6+R()*.4)).toFixed(1)}" fill="#1b1c1f" stroke="#6b6f75" stroke-width=".8"/>`}return s},
+ obsidian(R){let s='<defs><radialGradient id="og" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#3b3f4a"/><stop offset="1" stop-color="#0b0c10"/></radialGradient></defs><rect width="240" height="240" fill="url(#og)"/>';
+  for(let i=0;i<9;i++){const r=24+i*17;s+=`<ellipse cx="${(78+R()*8).toFixed(1)}" cy="${(70+R()*8).toFixed(1)}" rx="${(r*1.2).toFixed(1)}" ry="${r}" fill="none" stroke="#b4bacb" stroke-width="${(.6+R()*.8).toFixed(1)}" opacity="${(.1+R()*.2).toFixed(2)}"/>`}
+  s+='<path d="M20 30 Q 90 10 150 40 Q 90 30 40 70Z" fill="#fff" opacity=".13"/><ellipse cx="190" cy="190" rx="34" ry="12" transform="rotate(-30 190 190)" fill="#fff" opacity=".07"/>';
+  return s},
+ pumice(R){let s='<rect width="240" height="240" fill="#d8d3c8"/>'+dots(R,400,'#bdb7a9',.5,1.3,.5);
+  for(let i=0;i<75;i++){const cx=R()*240,cy=R()*240,r=2+R()*9;s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#8a8477" opacity=".7" stroke="#efeae0" stroke-width="1"/><circle cx="${(cx+1).toFixed(1)}" cy="${(cy+1).toFixed(1)}" r="${(r*.7).toFixed(1)}" fill="#4f4a41" opacity=".5"/>`}return s},
+ slate(R){let s='<rect width="240" height="240" fill="#4a525b"/>';
+  for(let i=0;i<6;i++){const y=R()*240;s+=`<path d="M-10 ${y.toFixed(0)} L250 ${(y+24).toFixed(0)}" stroke="#6b7580" stroke-width="${(10+R()*12).toFixed(0)}" opacity=".18"/>`}
+  for(let i=0;i<62;i++){const y=-20+i*4.6+R()*2;s+=`<path d="M-10 ${y.toFixed(1)} L250 ${(y+24+R()*2).toFixed(1)}" stroke="${R()>.5?'#3b4249':'#5d6671'}" stroke-width="${(.6+R()*1.8).toFixed(1)}" opacity=".7"/>`}
+  for(let i=0;i<3;i++){const x=R()*240;s+=`<path d="M${x.toFixed(0)} 0 L${(x+40).toFixed(0)} 240" stroke="#2f353b" stroke-width="1" opacity=".6"/>`}return s},
+ schist(R){let s='<rect width="240" height="240" fill="#6a696e"/>';const pal=['#8e8d94','#4d4c52','#a9a8b0','#59585f'];
+  for(let b=0;b<15;b++){const y=b*17+R()*6;s+=`<path d="M-5 ${y.toFixed(0)} Q 40 ${(y-10).toFixed(0)} 90 ${y.toFixed(0)} T 190 ${(y+R()*6-3).toFixed(0)} T 250 ${y.toFixed(0)}" fill="none" stroke="${pk(R,pal)}" stroke-width="${(5+R()*7).toFixed(1)}" opacity=".6"/>`}
+  for(let i=0;i<380;i++)s+=`<ellipse cx="${(R()*240).toFixed(1)}" cy="${(R()*240).toFixed(1)}" rx="${(1+R()*2.5).toFixed(1)}" ry="${(.5+R()*.6).toFixed(1)}" transform="rotate(${(-8+R()*10).toFixed(0)} ${(R()*240).toFixed(0)} ${(R()*240).toFixed(0)})" fill="${pk(R,['#f3f2f6','#cfd0d8','#e5e0d4'])}" opacity=".85"/>`;
+  for(let i=0;i<6;i++){const cx=R()*220+10,cy=R()*220+10,r=3.5+R()*2.5;s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="#8b2a38" stroke="#3a0f15" stroke-width="1"/><circle cx="${(cx-1).toFixed(1)}" cy="${(cy-1).toFixed(1)}" r="${(r*.35).toFixed(1)}" fill="#e08a93"/>`}return s},
+ gneiss(R){let s='<rect width="240" height="240" fill="#d9d1c5"/>';const light=['#e9e3da','#d4c8b8','#f3efe8'],dark=['#2e2d31','#4a4a50','#3a3a3f'];let y=-24,i=0;
+  while(y<250){const h=10+R()*16,a=R()*28-14,b=R()*28-14;s+=`<path d="M0 ${y.toFixed(1)} C 60 ${(y+a).toFixed(1)}, 150 ${(y-a).toFixed(1)}, 240 ${(y+b).toFixed(1)} L240 ${(y+h+b).toFixed(1)} C 150 ${(y+h-a).toFixed(1)}, 60 ${(y+h+a).toFixed(1)}, 0 ${(y+h).toFixed(1)} Z" fill="${i%3===1?pk(R,dark):pk(R,light)}"/>`;y+=h;i++}
+  s+=dots(R,260,'#ffffff',.6,1.6,.6)+dots(R,220,'#111111',.5,1.5,.5);
+  for(let k=0;k<5;k++)s+=`<ellipse cx="${(R()*240).toFixed(0)}" cy="${(R()*240).toFixed(0)}" rx="${(6+R()*8).toFixed(0)}" ry="${(3+R()*3).toFixed(0)}" fill="#e2a99b" opacity=".8"/>`;return s},
+ marble(R){let s='<rect width="240" height="240" fill="#efede8"/>'+cr(R,90,['#ffffff','#e6e4de','#f7f5f0'],8,18,.8,'#dedbd3');
+  const vein=(col,w,op)=>{let x=R()*240,y=-10,d='M'+x.toFixed(1)+' '+y;for(let k=0;k<9;k++){const nx=x+(R()*60-30),ny=y+30+R()*10;d+=` Q ${((x+nx)/2+R()*30-15).toFixed(1)} ${((y+ny)/2).toFixed(1)} ${nx.toFixed(1)} ${ny.toFixed(1)}`;x=nx;y=ny}
+   return `<g transform="rotate(${(R()*100-50).toFixed(0)} 120 120)"><path d="${d}" fill="none" stroke="${col}" stroke-width="${w.toFixed(1)}" opacity="${op}" stroke-linecap="round"/></g>`};
+  for(let i=0;i<6;i++)s+=vein('#8c8f99',.6+R()*2.4,(.5+R()*.3).toFixed(2));
+  for(let i=0;i<3;i++)s+=vein('#b99b62',.6+R()*.8,.5);return s},
+ quartzite(R){let s='<rect width="240" height="240" fill="#d8c1b6"/>';
+  for(let i=0;i<4;i++)s+=`<ellipse cx="${(R()*240).toFixed(0)}" cy="${(R()*240).toFixed(0)}" rx="${(40+R()*40).toFixed(0)}" ry="${(25+R()*25).toFixed(0)}" fill="#e9d6cc" opacity=".35"/>`;
+  s+=dots(R,900,'#f4e9e2',.8,2.2,.7)+dots(R,700,'#c08c7b',.6,2,.6)+dots(R,400,'#ffffff',.6,1.6,.8)+dots(R,200,'#a86f60',.5,1.3,.5);
+  for(let i=0;i<3;i++){const cx=R()*240,cy=R()*240,r=30+R()*40;s+=`<path d="M${(cx-r).toFixed(0)} ${cy.toFixed(0)} A ${r.toFixed(0)} ${(r*.7).toFixed(0)} 0 0 1 ${(cx+r).toFixed(0)} ${cy.toFixed(0)}" fill="none" stroke="#b88a7c" stroke-width=".9" opacity=".5"/>`}return s}
+});
+const IMG={};
+const rockImg=r=>IMG[r.id]||(IMG[r.id]='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">'+G[r.tex](rng(r.seed))+'</svg>'));
+
+function Hardness({h}){
+  const lo=h[0],hi=h[1],left=(lo-1)/9*100,w=Math.max((hi-lo)/9*100,6);
+  return html`<div><div class="meter" role="img" aria-label=${'الصلادة على مقياس موس: '+(lo===hi?lo:lo+' إلى '+hi)}><i style=${{left:left+'%',width:w+'%'}}></i></div>
+    <div class="meter-n"><span>1 رخو</span><span>10 شديد الصلادة</span></div></div>`;
+}
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const groupOfCat=id=>GROUPS.find(g=>g.id===catOf(id).group);
+const groupOfRock=r=>groupOfCat(r.cat);
+function makeQuiz(scope){
+  const pool=scope==='all'?ROCKS:ROCKS.filter(r=>groupOfRock(r).id===scope);
+  const types=scope==='all'?['img','clue','img','clue','cat','grp']:['img','clue','img','clue','cat'];
+  return shuffle(pool).slice(0,10).map(r=>{
+    const g=groupOfRock(r),type=pk(Math.random,types);
+    if(type==='cat')return{type,r,key:r.cat,opts:CATS.filter(c=>c.group===g.id).map(c=>({key:c.id,label:c.name}))};
+    if(type==='grp')return{type,r,key:g.id,opts:GROUPS.map(x=>({key:x.id,label:x.name}))};
+    const rest=ROCKS.filter(x=>x.id!==r.id);
+    const near=shuffle(rest.filter(x=>x.cat===r.cat))
+      .concat(shuffle(rest.filter(x=>x.cat!==r.cat&&groupOfRock(x).id===g.id)))
+      .concat(shuffle(rest.filter(x=>groupOfRock(x).id!==g.id)));
+    return{type,r,key:r.id,clue:type==='clue'?pk(Math.random,r.clues):null,opts:shuffle([r,...near.slice(0,3)]).map(x=>({key:x.id,label:x.name}))};
+  });
+}
+const correctLabel=q=>q.type==='cat'?catOf(q.key).name:q.type==='grp'?GROUPS.find(g=>g.id===q.key).name:q.r.name;
+const explain=q=>{
+  const c=catOf(q.r.cat),g=groupOfCat(q.r.cat);
+  if(q.type==='cat')return q.r.name+' صخر '+g.single+' '+c.name+'. '+c.def;
+  if(q.type==='grp')return q.r.name+' صخر '+g.single+'. '+g.def;
+  return q.r.name+' صخر '+g.single+' '+c.name+'. '+q.r.how;
+};
+function getBest(sc){try{return +localStorage.getItem('atlas-best-'+sc)||0}catch(e){return 0}}
+function setBest(sc,v){try{localStorage.setItem('atlas-best-'+sc,String(v))}catch(e){}}
+
+function Quiz({scope,onExit,onOpenRock}){
+  const [qs,setQs]=useState(()=>makeQuiz(scope));
+  const [i,setI]=useState(0),[pick,setPick]=useState(null),[log,setLog]=useState([]),[done,setDone]=useState(false),[best,setBestS]=useState(getBest(scope));
+  const scopeName=scope==='all'?'اختبار شامل':GROUPS.find(g=>g.id===scope).name;
+  const q=qs[i];
+  const answer=k=>{if(pick!=null)return;setPick(k);setLog(l=>[...l,{q,ok:k===q.key}])};
+  const next=()=>{
+    if(i+1>=qs.length){const sc=log.filter(x=>x.ok).length;if(sc>best){setBest(scope,sc);setBestS(sc)}setDone(true)}
+    else{setI(i+1);setPick(null)}
+  };
+  const restart=()=>{setQs(makeQuiz(scope));setI(0);setPick(null);setLog([]);setDone(false)};
+  if(done){
+    const sc=log.filter(x=>x.ok).length,miss=log.filter(x=>!x.ok),pct=sc/qs.length;
+    const msg=pct>=0.9?'ممتاز! أنت تميّز الصخور بإتقان.':pct>=0.6?'جيد جدًا. راجع الصخور التي أخطأت فيها.':'بداية جيدة. افتح المعرض وراجع خواص كل صخر ثم أعد المحاولة.';
+    return html`<div class="quiz"><div class="qcard">
+      <h2>نتيجتك</h2>
+      <div class="score">${sc} / ${qs.length}</div>
+      <p>${msg}</p><p style=${{color:'var(--muted)',fontSize:'14px'}}>أفضل نتيجة لك في «${scopeName}» على هذا المتصفح: ${best}</p>
+      ${miss.length?html`<h3 style=${{marginTop:'16px',fontSize:'16px'}}>راجع هذه الصخور</h3>${miss.map(m=>html`<button key=${m.q.r.id} class="miss" onClick=${()=>onOpenRock(m.q.r.id)}><img src=${rockImg(m.q.r)} alt=""/><span><b>${m.q.r.name}</b> · ${groupOfRock(m.q.r).single} ${catOf(m.q.r.cat).name}</span></button>`)}`:null}
+      <div class="row-btns"><button class="btn pri" onClick=${restart}>اختبار جديد</button><button class="btn" onClick=${onExit}>العودة للمعرض</button></div>
+    </div></div>`;
+  }
+  const ok=pick!=null&&pick===q.key;
+  const title=q.type==='img'?'ما اسم هذا الصخر؟':q.type==='clue'?'أي صخر يوافق هذا الوصف؟':q.type==='cat'?'إلى أي نوع ينتمي «'+q.r.name+'»؟':'إلى أي مجموعة ينتمي «'+q.r.name+'»؟';
+  return html`<div class="quiz">
+    <div class="qbar" role="progressbar" aria-valuemin="0" aria-valuemax=${qs.length} aria-valuenow=${i+1}><i style=${{width:((i+(pick!=null?1:0))/qs.length*100)+'%'}}></i></div>
+    <div class="qmeta"><span>${scopeName} · السؤال ${i+1} من ${qs.length}</span><button class="btn" onClick=${onExit}>إنهاء</button></div>
+    <div class="qcard">
+      <h2>${title}</h2>
+      ${q.type==='clue'?html`<div class="qclue">${q.clue}</div>`:html`<img class="qimg" src=${rockImg(q.r)} alt=${q.type==='img'?'عينة صخر للتعرّف عليه':'عينة من '+q.r.name}/>`}
+      <div class="opts">${q.opts.map(o=>html`<button key=${o.key} class=${'opt'+(pick!=null?(o.key===q.key?' ok':o.key===pick?' no':''):'')} disabled=${pick!=null} onClick=${()=>answer(o.key)}>${o.label}</button>`)}</div>
+      ${pick!=null?html`<div class=${'fb '+(ok?'ok':'no')} aria-live="polite">
+        <strong>${ok?'إجابة صحيحة':'الصحيح: '+correctLabel(q)}</strong>${explain(q)}
+      </div><div class="row-btns"><button class="btn pri" onClick=${next}>${i+1>=qs.length?'عرض النتيجة':'السؤال التالي'}</button></div>`:null}
+    </div></div>`;
+}
+
+function RocksTab(){
+  const [grpId,setGrp]=useState('sedimentary');
+  const [sub,setSub]=useState('all');
+  const [selId,setSelId]=useState(ROCKS[0].id);
+  const [quiz,setQuiz]=useState(null);
+  const det=useRef(null);
+  const g=GROUPS.find(x=>x.id===grpId);
+  const cats=CATS.filter(c=>c.group===grpId);
+  const groupRocks=ROCKS.filter(x=>groupOfRock(x).id===grpId);
+  const list=sub==='all'?groupRocks:groupRocks.filter(x=>x.cat===sub);
+  const r=ROCKS.find(x=>x.id===selId)||groupRocks[0];
+  const rg=groupOfRock(r);
+  const chooseGroup=id=>{setGrp(id);setSub('all');setSelId(ROCKS.find(x=>groupOfRock(x).id===id).id)};
+  const choose=id=>{setSelId(id);const el=det.current;if(el&&window.innerWidth<=900&&el.getBoundingClientRect().top>window.innerHeight*0.6)el.scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'})};
+  const open=id=>{const rk=ROCKS.find(x=>x.id===id);setGrp(groupOfRock(rk).id);setSub('all');setSelId(id);setQuiz(null)};
+  if(quiz)return html`<${Quiz} key=${quiz} scope=${quiz} onExit=${()=>setQuiz(null)} onOpenRock=${open}/>`;
+  return html`<div>
+    <div class="cats" role="group" aria-label="مجموعات الصخور" style=${{marginTop:'14px'}}>
+      ${GROUPS.map(x=>html`<button key=${x.id} class="chip big" aria-pressed=${x.id===grpId} onClick=${()=>chooseGroup(x.id)}>${x.name}</button>`)}
+    </div>
+    <ol class="steps" aria-label=${'مراحل تكوّن '+g.name}>
+      ${g.steps.map(([a,b])=>html`<li key=${a}><b>${a}</b>${b}</li>`)}
+    </ol>
+    <div class="cats" role="group" aria-label=${'أنواع '+g.name}>
+      <button class="chip" aria-pressed=${sub==='all'} onClick=${()=>setSub('all')}>الكل (${groupRocks.length})</button>
+      ${cats.map(c=>html`<button key=${c.id} class="chip" aria-pressed=${sub===c.id} onClick=${()=>setSub(c.id)}>${c.name}</button>`)}
+      <div class="qbtns">
+        <button class="btn pri" onClick=${()=>setQuiz(grpId)}>اختبر نفسك</button>
+        <button class="btn" onClick=${()=>setQuiz('all')}>اختبار شامل</button>
+      </div>
+    </div>
+    <p class="sub-def">${sub==='all'?g.def:catOf(sub).def}</p>
+    <div class="rk">
+      <div class="rk-list">${list.map(x=>html`<button key=${x.id} class="rcard" aria-pressed=${x.id===r.id} onClick=${()=>choose(x.id)}>
+        <img src=${rockImg(x)} alt=${'عينة من '+x.name} loading="lazy"/><b>${x.name}</b><small>${x.en}</small></button>`)}</div>
+      <aside class="panel rk-detail" ref=${det} aria-live="polite">
+        <img class="rk-big" src=${rockImg(r)} alt=${'عينة من '+r.name}/>
+        <h2>${r.name}<span class="en">${r.en}</span></h2>
+        <span class="pill">صخر ${rg.single} ${catOf(r.cat).name}</span>
+        <dl>
+          <dt>الحبيبات</dt><dd>${r.grain}</dd>
+          <dt>اللون</dt><dd>${r.color}</dd>
+          <dt>الحمض المخفف</dt><dd>${r.acid}</dd>
+          <dt>الصلادة (موس)</dt><dd>${r.hard[0]===r.hard[1]?r.hard[0]:r.hard[0]+' إلى '+r.hard[1]}</dd>
+        </dl>
+        <${Hardness} h=${r.hard}/>
+        <h3>كيف تكوّن؟</h3><p>${r.how}</p>
+        <h3>الاستخدامات</h3><p>${r.uses}</p>
+        <h3>في مصر</h3><p>${r.egypt}</p>
+        <div class="row-btns"><button class="btn pri" onClick=${()=>setQuiz(grpId)}>اختبر نفسك</button></div>
+      </aside>
+    </div>
+  </div>`;
+}
+
+/* ======================= التطبيق ======================= */
+const TABS=[{id:'terrain',name:'التضاريس ثلاثية الأبعاد'},{id:'rocks',name:'معرض الصخور'}];
+function Logo(){return html`<svg class="logo" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+  <path d="M28 4c13 0 24 8 24 22s-9 26-24 26S4 42 4 28 15 4 28 4z"/><path d="M28 11c9 0 17 6 17 16s-7 19-17 19-17-8-17-18 8-17 17-17z"/>
+  <path d="M28 18c6 0 10 4 10 10s-4 12-10 12-10-5-10-11 4-11 10-11z"/><path d="M28 25c3 0 4 2 4 4s-2 5-4 5-4-2-4-4 1-5 4-5z" fill="currentColor"/></svg>`}
+function App(){
+  const read=()=>{const h=location.hash.slice(1);return TABS.some(t=>t.id===h)?h:'terrain'};
+  const [tab,setTab]=useState(read);
+  useEffect(()=>{const f=()=>setTab(read());window.addEventListener('hashchange',f);return()=>window.removeEventListener('hashchange',f)},[]);
+  const go=id=>{setTab(id);try{location.hash=id}catch(e){}};
+  return html`<div class="wrap">
+    <header class="top"><${Logo}/><div><h1>أطلس الأرض</h1><div class="sub">جغرافيا وجيولوجيا تفاعلية: تضاريس ثلاثية الأبعاد ومعرض للصخور</div></div></header>
+    <div class="tabs" role="tablist">${TABS.map(t=>html`<button key=${t.id} class="tab" role="tab" aria-selected=${tab===t.id} onClick=${()=>go(t.id)}>${t.name}</button>`)}</div>
+    ${tab==='terrain'?html`<${TerrainTab}/>`:html`<${RocksTab}/>`}
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
+</script>
+
+</body></html>
